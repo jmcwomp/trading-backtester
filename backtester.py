@@ -6,35 +6,31 @@ from rich import print
 import matplotlib.pyplot as plt
 
 
-# Pull stock data
-ticker = 'AAPL'
-start_date = '2000-01-01'
-end_date = '2020-12-31'
-stock_data = yf.download(ticker, start= start_date, end=end_date)
-stock_data.columns = stock_data.columns.droplevel(1)
-cash = int(input("Starting Cash: $")) #starting cash
+# Preparing data - Create Moving Average and Buy/Sell Signals
+def prepare_data(ticker, start_date, end_date):
+    stock_data = yf.download(ticker, start= start_date, end=end_date)
+    stock_data.columns = stock_data.columns.droplevel(1)
+ 
+    # Calculate 50 day and 200 day Moving Average to find trends 
+    #50 Day 
+    stock_data['MA50'] = stock_data['Close'].rolling(window = 50).mean()
 
-# Calculate 50 day and 200 day Moving-Average to find trends 
-#50 Day 
-stock_data['MA50'] = stock_data['Close'].rolling(window = 50).mean()
+    #200 day
+    stock_data['MA200'] = stock_data['Close'].rolling(window = 200).mean()
 
-#200 day
-stock_data['MA200'] = stock_data['Close'].rolling(window = 200).mean()
+    # Generating Buy And Sell Signals based on MA trends
+    # These trends are based on the Golden Cross and Death Cross strategy. 
+    # A buy signal is generated when the 50-day moving average crosses above the 200-day moving average (Golden Cross). 
+    # A sell signal is generated when the 50-day moving average crosses below the 200-day moving average (Death Cross).
+    stock_data['Signal'] = 0 
+    stock_data.loc[(stock_data['MA50'] > stock_data['MA200']) & (stock_data['MA50'].shift(1) < stock_data['MA200'].shift(1)) ,'Signal'] = 1 #Buy
+    stock_data.loc[(stock_data['MA50'] < stock_data['MA200']) & (stock_data['MA50'].shift(1) > stock_data['MA200'].shift(1)) ,'Signal'] = -1 #Sell
 
-
-
-# Generating Buy And Sell Signals based on MA trends
-# These trends are based on the Golden Cross and Death Cross strategy. 
-# A buy signal is generated when the 50-day moving average crosses above the 200-day moving average (Golden Cross). 
-# A sell signal is generated when the 50-day moving average crosses below the 200-day moving average (Death Cross).
-
-stock_data['Signal'] = 0 
-stock_data.loc[(stock_data['MA50'] > stock_data['MA200']) & (stock_data['MA50'].shift(1) < stock_data['MA200'].shift(1)) ,'Signal'] = 1 #Buy
-stock_data.loc[(stock_data['MA50'] < stock_data['MA200']) & (stock_data['MA50'].shift(1) > stock_data['MA200'].shift(1)) ,'Signal'] = -1 #Sell
+    return stock_data 
 
 # Simulating Trades - These trades are based on the signals generated  by the moving averages. 
 # The simulation will track the number of shares bought and sold, as well as the profit or loss from each trade.
-def simulate_trades(stock_data):
+def simulate_trades(stock_data,cash):
     shares = 0
     buy_price = 0
     buy_date = None
@@ -52,7 +48,8 @@ def simulate_trades(stock_data):
             sell_date = i
             sell_price = row['Close']
             profit = (shares * sell_price) - (shares * buy_price)
-            balance  = cash + profit
+            cash = cash + profit
+            balance  = cash
             trade.append({
                  'buy_date': buy_date,
                 'buy_price': buy_price,
@@ -63,11 +60,7 @@ def simulate_trades(stock_data):
             shares = 0
     return trade
 
-trades = simulate_trades(stock_data)
-print(trades)
-
-        
-#Performance Metrics - Genetaring performance metrics based on the trades simulated. 
+#Performance Metrics - Generating performance metrics based on the trades simulated. 
 # These metrics will help evaluate the effectiveness of the trading strategy.
 def calcuate_metric(trades):
     total_profit = 0 
@@ -82,7 +75,7 @@ def calcuate_metric(trades):
     total_profit = sum(trade['profit'] for trade  in trades )
 
     #Win Rate - (num of profits > 0 / num of trades) * 100
-    win_rate =  (sum(trade['profit'] > 0 for trade  in trades ) / len(trades)) 
+    win_rate =  (sum(trade['profit'] > 0 for trade  in trades ) / len(trades))   *100 if trades else 0 #case if trades are 0
 
     winning_profits = [trade['profit'] for trade in trades if trade['profit'] > 0]
     losing_profits = [trade['profit'] for trade in trades if trade['profit'] < 0]
@@ -93,7 +86,7 @@ def calcuate_metric(trades):
     avg_loss = sum(losing_profits) / len(losing_profits) if losing_profits else 0
 
     #Drawdown - term for any drop 
-    peak = trades[0]['balance']
+    peak = trades[0]['balance'] if trades else 0
 
     for  trade in trades:
         balance = trade['balance']
@@ -103,7 +96,6 @@ def calcuate_metric(trades):
 
         if drawdown > max_drawdown:
             max_drawdown = drawdown
-    print("Performance Metrics:")
     performance_metric.append({
         'Trades': len(trades),
         'Total Profit': total_profit, 
@@ -115,9 +107,6 @@ def calcuate_metric(trades):
     })
     return  performance_metric
 
-metrics = calcuate_metric(trades)
-print(metrics)
-     
 #Benchmark Comparison - Comparing my trading strategy 
 #final balance to my buy/hold final value.  
 def calculate_buy_and_hold(stock_data, cash):
@@ -126,9 +115,6 @@ def calculate_buy_and_hold(stock_data, cash):
     shares = cash / first_price
     final_value = shares * last_price
     return final_value
-
-strategy_profit = metrics[0]['Total Profit']
-buy_hold_value = calculate_buy_and_hold(stock_data, cash)
 
 def benchmark_comparison(strategy_profit, buy_hold_value):
     difference = 0
@@ -143,7 +129,6 @@ def benchmark_comparison(strategy_profit, buy_hold_value):
     else:
         difference = 0
         ratio = 1 
-    print("Benchmark Comparison:")
     final_comparison.append({
         'Strategy Profit': strategy_profit,
         'Buy & Hold Profit': buy_hold_value,
@@ -152,32 +137,76 @@ def benchmark_comparison(strategy_profit, buy_hold_value):
             })
     return final_comparison
 
-final_comparison = benchmark_comparison(strategy_profit,buy_hold_value)
-print(final_comparison)    
+# Setup for multiple tickers. We will loop through each ticker and perform the backtesting process. 
+# All across one time frame.
+tickers = ['META', 'AAPL'] #stock tickers
+start_date = '2010-01-01'
+end_date = '2023-01-01'
+starting_cash = int(input("Starting Cash: $")) #starting cash
+
+# Loop through each ticker and perform backtesting
+
+for ticker in tickers:
+    print(f"\nBacktesting {ticker} from {start_date} to {end_date}...")
+    stock_data = prepare_data(ticker, start_date, end_date)
+    trades = simulate_trades(stock_data,starting_cash)
+    performance_metrics = calcuate_metric(trades)
+    buy_hold_value = calculate_buy_and_hold(stock_data, starting_cash)
+    strategy_profit = performance_metrics[0]['Total Profit']
+    comparison = benchmark_comparison(strategy_profit, buy_hold_value)
+    print(f"Performance Metrics for {ticker}")
+    print(performance_metrics)
+    print(f"Benchmark Comparison for {ticker}")
+    print(comparison)
+    print(f"view trades for {ticker}? (y/n)")
+    view_trades = input().lower()
+    if view_trades == 'y':
+        print(f"Trades for {ticker}:")
+        for trade in trades:
+            print(trade)
+    else: print("Trades skipped.")
+    print("next? (y/n)")
+    next_ticker = input().lower()
+    if next_ticker == 'y':
+        continue
+    else: break
+
+        
+    
+    
 
 #Visualizing Golden Cross Strategy 
-print("Would you like to visualize the Golden Cross Strategy? (y/n)")
-visualize = input().lower()
-if visualize == 'y':
-    print(f"Visualizing {ticker} Golden Cross Strategy from {start_date} to {end_date}...")
-    plt.style.use('seaborn-v0_8-darkgrid')
+while True:
 
-    plt.figure(figsize=(14, 7))  
+    print("Would you like to visualize a Golden Cross Strategy? (y/n)")
+    visualize = input().lower()
+    if visualize == 'y':
+        print(f"Which ticker would you like to visualize? ({tickers})")
+        ticker = input().upper()
+        if ticker not in tickers:
+            print(f"{ticker} is not in the list of tickers. Please choose from {tickers}.")
+        else:
+            stock_data = prepare_data(ticker, start_date, end_date)
+            print(f"Visualizing {ticker} Golden Cross Strategy from {start_date} to {end_date}...")
+            plt.style.use('seaborn-v0_8-darkgrid')
 
-    plt.plot(stock_data['Close'], label = 'Close Price')
-    plt.plot(stock_data['MA50'], label = '50-Day MA')
-    plt.plot(stock_data['MA200'], label = "200-day MA")
+            plt.figure(figsize=(14, 7))  
 
-    buys = stock_data[stock_data['Signal'] == 1]
-    plt.scatter(buys.index, buys['Close'], color='green', marker='^', s=100, label='Buy')
+            plt.plot(stock_data['Close'], label = 'Close Price')
+            plt.plot(stock_data['MA50'], label = '50-Day MA')
+            plt.plot(stock_data['MA200'], label = "200-day MA")
 
-    sells = stock_data[stock_data['Signal'] == -1]
-    plt.scatter(sells.index, sells['Close'], color='red', marker='v', s=100, label='Sell')
-    plt.title(f"{ticker} Golden Cross Strategy ({start_date[:4]}-{end_date[:4]})")
-    plt.xlabel('Date')
-    plt.ylabel('Price ($)')
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.show()
-else:
-    print("Visualization skipped.") 
+            buys = stock_data[stock_data['Signal'] == 1]
+            plt.scatter(buys.index, buys['Close'], color='green', marker='^', s=100, label='Buy')
+
+            sells = stock_data[stock_data['Signal'] == -1]
+            plt.scatter(sells.index, sells['Close'], color='red', marker='v', s=100, label='Sell')
+            plt.title(f"{ticker} Golden Cross Strategy ({start_date[:4]}-{end_date[:4]})")
+            plt.xlabel('Date')
+            plt.ylabel('Price ($)')
+            plt.grid(True, alpha=0.3)
+            plt.legend()
+            plt.show()
+    else:
+        print("Visualization skipped.") 
+        break
