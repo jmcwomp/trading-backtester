@@ -1,4 +1,4 @@
-# Trading Back Tester 
+# Trading Backtester 
 
 This repository serves as the home for my first quantitative finance project — a trading backtester built in Python.
 
