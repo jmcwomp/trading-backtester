@@ -1,4 +1,4 @@
-# Python BackTester 
+# Trading Backtester 
 
 import yfinance as yf
 import pandas as pd
@@ -6,17 +6,16 @@ from rich import print
 import matplotlib.pyplot as plt
 
 
-#Pull stock data from 2020-2023
-ticker = 'TSLA'
+# Pull stock data
+ticker = 'AAPL'
 start_date = '2000-01-01'
 end_date = '2020-12-31'
 stock_data = yf.download(ticker, start= start_date, end=end_date)
 stock_data.columns = stock_data.columns.droplevel(1)
 cash = int(input("Starting Cash: $")) #starting cash
-#Calculate 50 day and 200 day Moving-Avergage to find trends 
 
+# Calculate 50 day and 200 day Moving-Average to find trends 
 #50 Day 
-
 stock_data['MA50'] = stock_data['Close'].rolling(window = 50).mean()
 
 #200 day
@@ -24,14 +23,17 @@ stock_data['MA200'] = stock_data['Close'].rolling(window = 200).mean()
 
 
 
-#Generating Signals--
-stock_data['Signal'] = 0 
+# Generating Buy And Sell Signals based on MA trends
+# These trends are based on the Golden Cross and Death Cross strategy. 
+# A buy signal is generated when the 50-day moving average crosses above the 200-day moving average (Golden Cross). 
+# A sell signal is generated when the 50-day moving average crosses below the 200-day moving average (Death Cross).
 
+stock_data['Signal'] = 0 
 stock_data.loc[(stock_data['MA50'] > stock_data['MA200']) & (stock_data['MA50'].shift(1) < stock_data['MA200'].shift(1)) ,'Signal'] = 1 #Buy
 stock_data.loc[(stock_data['MA50'] < stock_data['MA200']) & (stock_data['MA50'].shift(1) > stock_data['MA200'].shift(1)) ,'Signal'] = -1 #Sell
 
-
-
+# Simulating Trades - These trades are based on the signals generated  by the moving averages. 
+# The simulation will track the number of shares bought and sold, as well as the profit or loss from each trade.
 def simulate_trades(stock_data):
     shares = 0
     buy_price = 0
@@ -40,12 +42,12 @@ def simulate_trades(stock_data):
     profit = 0
     for i, row, in stock_data.iterrows():
 
-        #buy signal
+        #Buy signal
         if row['Signal'] == 1 and not shares:
             buy_date = i
             buy_price = row['Close']
             shares = cash / buy_price
-            
+        #Sell signal
         if row['Signal'] == -1 and shares:
             sell_date = i
             sell_price = row['Close']
@@ -65,7 +67,8 @@ trades = simulate_trades(stock_data)
 print(trades)
 
         
-#Performance Metrics 
+#Performance Metrics - Genetaring performance metrics based on the trades simulated. 
+# These metrics will help evaluate the effectiveness of the trading strategy.
 def calcuate_metric(trades):
     total_profit = 0 
     win_rate = 0.0
@@ -75,19 +78,21 @@ def calcuate_metric(trades):
     max_drawdown = 0.0
     performance_metric = []
 
-    #total profit
+    #Total profit - Sum of all profits from trades
     total_profit = sum(trade['profit'] for trade  in trades )
-    #win rate - (num of profits > 0 / num of trades) * 100
+
+    #Win Rate - (num of profits > 0 / num of trades) * 100
     win_rate =  (sum(trade['profit'] > 0 for trade  in trades ) / len(trades)) 
 
     winning_profits = [trade['profit'] for trade in trades if trade['profit'] > 0]
     losing_profits = [trade['profit'] for trade in trades if trade['profit'] < 0]
-    #average_win - average of all the wins 
+
+    #Average Win - average of all the wins 
     avg_win = sum(winning_profits) / len(winning_profits) if winning_profits else 0 #case if wins are 0
-    #average_loss - average of all losses
+    #Average Loss - average of all losses
     avg_loss = sum(losing_profits) / len(losing_profits) if losing_profits else 0
 
-    #drawdoqn - term for any drop 
+    #Drawdown - term for any drop 
     peak = trades[0]['balance']
 
     for  trade in trades:
@@ -98,7 +103,7 @@ def calcuate_metric(trades):
 
         if drawdown > max_drawdown:
             max_drawdown = drawdown
-
+    print("Performance Metrics:")
     performance_metric.append({
         'Trades': len(trades),
         'Total Profit': total_profit, 
@@ -138,6 +143,7 @@ def benchmark_comparison(strategy_profit, buy_hold_value):
     else:
         difference = 0
         ratio = 1 
+    print("Benchmark Comparison:")
     final_comparison.append({
         'Strategy Profit': strategy_profit,
         'Buy & Hold Profit': buy_hold_value,
@@ -149,25 +155,29 @@ def benchmark_comparison(strategy_profit, buy_hold_value):
 final_comparison = benchmark_comparison(strategy_profit,buy_hold_value)
 print(final_comparison)    
 
-#Visualizing this Data 
+#Visualizing Golden Cross Strategy 
+print("Would you like to visualize the Golden Cross Strategy? (y/n)")
+visualize = input().lower()
+if visualize == 'y':
+    print(f"Visualizing {ticker} Golden Cross Strategy from {start_date} to {end_date}...")
+    plt.style.use('seaborn-v0_8-darkgrid')
 
-plt.style.use('seaborn-v0_8-darkgrid')
+    plt.figure(figsize=(14, 7))  
 
-plt.figure(figsize=(14, 7))  
+    plt.plot(stock_data['Close'], label = 'Close Price')
+    plt.plot(stock_data['MA50'], label = '50-Day MA')
+    plt.plot(stock_data['MA200'], label = "200-day MA")
 
-plt.plot(stock_data['Close'], label = 'Close Price')
-plt.plot(stock_data['MA50'], label = '50-Day MA')
-plt.plot(stock_data['MA200'], label = "200-day MA")
+    buys = stock_data[stock_data['Signal'] == 1]
+    plt.scatter(buys.index, buys['Close'], color='green', marker='^', s=100, label='Buy')
 
-buys = stock_data[stock_data['Signal'] == 1]
-plt.scatter(buys.index, buys['Close'], color='green', marker='^', s=100, label='Buy')
-
-sells = stock_data[stock_data['Signal'] == -1]
-plt.scatter(sells.index, sells['Close'], color='red', marker='v', s=100, label='Sell')
-
-plt.title(f"{ticker} Golden Cross Strategy (2020-2021)")
-plt.xlabel('Date')
-plt.ylabel('Price ($)')
-plt.grid(True, alpha=0.3)
-plt.legend()
-plt.show()
+    sells = stock_data[stock_data['Signal'] == -1]
+    plt.scatter(sells.index, sells['Close'], color='red', marker='v', s=100, label='Sell')
+    plt.title(f"{ticker} Golden Cross Strategy ({start_date[:4]}-{end_date[:4]})")
+    plt.xlabel('Date')
+    plt.ylabel('Price ($)')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.show()
+else:
+    print("Visualization skipped.") 
