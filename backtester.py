@@ -140,8 +140,8 @@ def benchmark_comparison(strategy_profit, buy_hold_value):
 # Setup for multiple tickers. We will loop through each ticker and perform the backtesting process. 
 # All across one time frame.
 tickers = ['META', 'AAPL'] #stock tickers
-start_date = '2010-01-01'
-end_date = '2023-01-01'
+start_date = '2000-01-01'
+end_date = '2020-12-31'
 starting_cash = int(input("Starting Cash: $")) #starting cash
 
 # Loop through each ticker and perform backtesting

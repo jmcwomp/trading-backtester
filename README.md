@@ -24,7 +24,8 @@ Over the past 2 weeks I have spent time building the core of the backtester. So 
 - Compares strategy against a buy-and-hold benchmark
 - Visualizes price, moving averages, and trade signals with matplotlib 
 
-**Key Finding**:  On AAPL (2000-2020) the strategy returned ~$95k on $10k starting capital, but buy-and-hold returned a whopping ~$1.55M - roughly 16x more than the golden cross strategy. 
+**Key Finding**:  On AAPL (2010-2023) the strategy returned ~$55k on $10k starting capital, but buy-and-hold returned a ~300k - roughly 5x more than the golden cross strategy. 
+
 - From this I learned that the golden cross strategy underperforms because of how often it sells, forcing me to sit on tons of cash for long stretches of time. Compared to the buy-and-hold stategy that basically never sells and captures all stock growth. 
 
 ### UPDATE - June 20, 2026 
@@ -32,8 +33,8 @@ I've refactored the code so that it could run the strategy on multiple stocks in
 
 **Key Finding**: One observation worth pointing out. 
 
-While viewing the stock data for Meta (META), I noticed that the total profit from the Golden Cross strategy was greater than the Buy and Hold strategy, having a ratio of ~1.09x. The other data I've viewed have all had higher Buy and Hold ratios. Which means the golden cross strategy outperformed. 
+While viewing the stock data for Meta (META 2010-2023) , I noticed that the total profit from the Golden Cross strategy was greater than the Buy and Hold strategy, having a ratio of ~2.7x. The other data I've viewed have all had higher Buy and Hold ratios. Which means the golden cross strategy outperformed. 
 
-Looking at the individual trades I noticed the strategy caught one massive winner between 2013 and 2017 gaining a profit of ~$21,490 at $10k and only lost ~$8k in the span of 20 years. 
+Looking at the individual trades I noticed the strategy caught one massive winner between 2013 and 2017 gaining a profit of ~$21,490 at $10k starting capital and only lost ~$8k in the span of 20 years. 
 
-But why did Meta (META) win when Apple (AAPL) Lost by 16x? The answer is volatility. Meta had sharp, avoidable crashes that the death cross helped the strategy evade. Allowing the stocks to be sold before drops and buying back in for recoveries. Apple, by contrast, was a smooth riser. Steady climb with few crashes to avoid, so the same stradegy just missed gains while sitting in cash.
+But why did Meta (META) win when Apple (AAPL) Lost by 5x? The answer is volatility. Meta had sharp, avoidable crashes that the death cross helped the strategy evade. Allowing the stocks to be sold before drops and buying back in for recoveries. Apple, by contrast, was a smooth riser. Steady climb with few crashes to avoid, so the same stradegy just missed gains while sitting in cash.
