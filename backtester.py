@@ -62,7 +62,7 @@ def simulate_trades(stock_data,cash):
 
 #Performance Metrics - Generating performance metrics based on the trades simulated. 
 # These metrics will help evaluate the effectiveness of the trading strategy.
-def calcuate_metric(trades):
+def calculate_metric(trades):
     total_profit = 0 
     win_rate = 0.0
     avg_win = 0
