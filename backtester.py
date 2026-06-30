@@ -137,20 +137,26 @@ def benchmark_comparison(strategy_profit, buy_hold_value):
             })
     return final_comparison
 
+#Correlation Matrix - Measures how each pair of stocks move together based on daily return values
+def get_correlation_matrix(tickers, start_date, end_date):
+    data = yf.download(tickers, start= start_date, end=end_date)
+    closing_price = data["Close"]
+    returns = closing_price.pct_change()
+    correlation_matrix = returns.corr()
+    return correlation_matrix
 # Setup for multiple tickers. We will loop through each ticker and perform the backtesting process. 
 # All across one time frame.
-tickers = ['META', 'AAPL'] #stock tickers
+tickers =  ['AAPL', 'META', 'MSFT', 'GOOGL', 'AMZN'] #stock tickers
 start_date = '2000-01-01'
 end_date = '2020-12-31'
 starting_cash = int(input("Starting Cash: $")) #starting cash
 
 # Loop through each ticker and perform backtesting
-
 for ticker in tickers:
     print(f"\nBacktesting {ticker} from {start_date} to {end_date}...")
     stock_data = prepare_data(ticker, start_date, end_date)
     trades = simulate_trades(stock_data,starting_cash)
-    performance_metrics = calcuate_metric(trades)
+    performance_metrics = calculate_metric(trades)
     buy_hold_value = calculate_buy_and_hold(stock_data, starting_cash)
     strategy_profit = performance_metrics[0]['Total Profit']
     comparison = benchmark_comparison(strategy_profit, buy_hold_value)
@@ -171,7 +177,17 @@ for ticker in tickers:
         continue
     else: break
 
-        
+#Testing Correlation Matrix 
+while True:
+    print("Would you like to view the correlation matrix for these tickers? (y/n)")
+    see_matrix = input().lower()
+    if see_matrix == 'y':
+        gather_matrix = get_correlation_matrix(tickers,start_date, end_date)        
+        print(gather_matrix.round(2))
+        break
+    elif see_matrix == 'n':
+        print('skipping.')
+        break
     
     
 
@@ -210,3 +226,12 @@ while True:
     else:
         print("Visualization skipped.") 
         break
+
+    #Correlation Matrix - 
+
+def get_correlation_matrix(tickers, start_date, end_date):
+    data = yf.download(tickers, start= start_date, end=end_date)
+    closing_price = data["Close"]
+    returns = closing_price.pct_change()
+    correlation_matrix = returns.corr()
+    return correlation_matrix
