@@ -28,7 +28,7 @@ Over the past 2 weeks I have spent time building the core of the backtester. So 
 
 - From this I learned that the golden cross strategy underperforms because of how often it sells, forcing me to sit on tons of cash for long stretches of time. Compared to the buy-and-hold stategy that basically never sells and captures all stock growth. 
 
-### UPDATE - June 20, 2026 
+### UPDATE-2 - June 20, 2026
 I've refactored the code so that it could run the strategy on multiple stocks in a single execution. The backtester now loops through a list of tickers, and runs the full pipeline on each. I've also made the execution more user-friendly. The user controls what they see (trades, metrics, visualizations) rather than getting everything dumped at once.
 
 **Key Finding**: One observation worth pointing out. 

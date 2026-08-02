@@ -47,17 +47,37 @@ def simulate_trades(stock_data,cash):
         if row['Signal'] == -1 and shares:
             sell_date = i
             sell_price = row['Close']
-            profit = (shares * sell_price) - (shares * buy_price)
-            cash = cash + profit
-            balance  = cash
+            proceeds = shares * sell_price
+            cost_basis = shares * buy_price
+            profit = proceeds - cost_basis
+            cash = proceeds 
             trade.append({
                  'buy_date': buy_date,
-                'buy_price': buy_price,
+                'buy_price': float(buy_price),
                 'sell_date': sell_date,
-                'profit': profit, 
-                'balance': round(balance,2)
+                'profit': round(float(profit), 2), 
+                'balance': round(float(cash),2)
                 })
             shares = 0
+
+    # If a position is still open at the end of the backtest window,
+    # close it out at the last available price so it's not silently dropped.
+    if shares > 0:
+        last_date = stock_data.index[-1]
+        last_price = stock_data['Close'].iloc[-1]
+        proceeds = shares * last_price
+        cost_basis = shares * buy_price
+        profit = proceeds - cost_basis
+        cash = proceeds
+
+        trade.append({
+            'buy_date': buy_date,
+            'buy_price': float(buy_price),
+            'sell_date': last_date,
+            'profit': float(profit),
+            'balance': round(float(cash), 2)
+        })
+
     return trade
 
 #Performance Metrics - Generating performance metrics based on the trades simulated. 
@@ -114,7 +134,7 @@ def calculate_buy_and_hold(stock_data, cash):
     last_price =  stock_data['Close'].iloc[-1]
     shares = cash / first_price
     final_value = shares * last_price
-    return final_value
+    return float(final_value)
 
 def benchmark_comparison(strategy_profit, buy_hold_value):
     difference = 0
@@ -225,13 +245,4 @@ while True:
             plt.show()
     else:
         print("Visualization skipped.") 
-        break
-
-    #Correlation Matrix - 
-
-def get_correlation_matrix(tickers, start_date, end_date):
-    data = yf.download(tickers, start= start_date, end=end_date)
-    closing_price = data["Close"]
-    returns = closing_price.pct_change()
-    correlation_matrix = returns.corr()
-    return correlation_matrix
+        break 
