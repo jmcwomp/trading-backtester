@@ -4,7 +4,8 @@ import yfinance as yf
 import pandas as pd
 from rich import print
 import matplotlib.pyplot as plt
-
+import numpy as np 
+import networkx as nx
 
 # Preparing data - Create Moving Average and Buy/Sell Signals
 def prepare_data(ticker, start_date, end_date):
@@ -164,6 +165,21 @@ def get_correlation_matrix(tickers, start_date, end_date):
     returns = closing_price.pct_change()
     correlation_matrix = returns.corr()
     return correlation_matrix
+
+def correlation_to_distance(correlation_matrix):
+    distance = np.sqrt(2 * (1-correlation_matrix))
+    return distance
+
+def create_n_graphs(tickers, dist):
+    G = nx.Graph()
+    for i, tickers_i in enumerate(tickers):
+        for j, tickers_j in enumerate(tickers):
+         if  i < j:
+             G.add_edge(tickers_i, tickers_j, weight = dist.loc[tickers_i, tickers_j])
+    return G
+
+
+
 # Setup for multiple tickers. We will loop through each ticker and perform the backtesting process. 
 # All across one time frame.
 tickers =  ['AAPL', 'META', 'MSFT', 'GOOGL', 'AMZN'] #stock tickers
@@ -208,6 +224,28 @@ while True:
     elif see_matrix == 'n':
         print('skipping.')
         break
+
+
+#Testing NetworkX 
+while  True:
+    print("Would you like to generate a graph? (y/n)")
+    see_graph = input().lower()
+    if see_graph == 'y':
+         gather_matrix = get_correlation_matrix(tickers,start_date, end_date)        
+         dist = correlation_to_distance(gather_matrix)
+
+         Graphs = create_n_graphs(tickers, dist)
+         pos = nx.spring_layout(Graphs)
+         nx.draw(Graphs, pos, with_labels=True)
+         plt.show()
+         break
+    elif see_graph == 'n':
+        print("skipping...")
+        break
+
+
+
+
     
     
 
