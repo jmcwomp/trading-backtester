@@ -4,8 +4,10 @@ import yfinance as yf
 import pandas as pd
 from rich import print
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np 
 import networkx as nx
+import community as community_louvain
 
 # Preparing data - Create Moving Average and Buy/Sell Signals
 def prepare_data(ticker, start_date, end_date):
@@ -178,11 +180,42 @@ def create_n_graphs(tickers, dist):
              G.add_edge(tickers_i, tickers_j, weight = dist.loc[tickers_i, tickers_j])
     return G
 
+def extract_mst(G):
+    mst = nx.minimum_spanning_tree(G, weight = 'weight')
+    return mst
 
+def detect_communities(G):
+    partition = community_louvain.best_partition(G, weight = 'weight')
+    return partition
 
+def create_similarity_graph(tickers, corr):
+    G = nx.Graph()
+    for i, ticker_i in enumerate(tickers):
+        for j, ticker_j in enumerate(tickers):
+            if i < j:
+                G.add_edge(ticker_i, ticker_j, weight=corr.loc[ticker_i, ticker_j])
+    return G
+
+def visualize_communities(G, partition, title = "Stock Correlation Communities"):
+    pos = nx.spring_layout(G, seed=42)
+    
+    num_communities = len(set(partition.values()))
+    colors = mpl.colormaps['tab10'].resampled(num_communities)
+    node_colors = [colors(partition[node]) for node in G.nodes()]
+    
+    plt.figure(figsize=(10, 8))
+    nx.draw(G, pos, with_labels=True, node_color=node_colors, 
+            node_size=800, font_size=9, font_weight='bold')
+    plt.title(title)
+    plt.show()
 # Setup for multiple tickers. We will loop through each ticker and perform the backtesting process. 
 # All across one time frame.
-tickers =  ['AAPL', 'META', 'MSFT', 'GOOGL', 'AMZN'] #stock tickers
+tickers = [
+    'AAPL', 'GOOGL', 'META', 'MSFT',   # tech
+    'XOM', 'CVX',                      # energy
+    'JPM', 'BAC', 'GS',                # banks
+    'PEP', 'KO', 'WMT'                 # consumer staples
+] #stock tickers
 start_date = '2000-01-01'
 end_date = '2020-12-31'
 starting_cash = int(input("Starting Cash: $")) #starting cash
@@ -214,40 +247,52 @@ for ticker in tickers:
     else: break
 
 #Testing Correlation Matrix 
+   
 while True:
     print("Would you like to view the correlation matrix for these tickers? (y/n)")
     see_matrix = input().lower()
     if see_matrix == 'y':
-        gather_matrix = get_correlation_matrix(tickers,start_date, end_date)        
+        gather_matrix = get_correlation_matrix(tickers,start_date, end_date)      
         print(gather_matrix.round(2))
+        dist = correlation_to_distance(gather_matrix)
+        Graphs = create_n_graphs(tickers, dist)
+
+        while  True:
+            print("Would you like to generate a graph? (y/n)")
+            see_graph = input().lower()
+            if see_graph == 'y': 
+                pos = nx.spring_layout(Graphs)
+                nx.draw(Graphs, pos, with_labels=True)
+                plt.show()
+                #Generating Minium Spanning Tree to show 
+                # strongest correlated relations
+
+                mst = extract_mst(Graphs)
+                plt.figure()
+                pos_mst = nx.spring_layout(mst)
+                nx.draw(mst, pos_mst, with_labels = True)
+                plt.show()
+                break
+            elif see_graph == 'n':
+                print("skipping...")
+                break
+                
+                #Generating Community Detection wth Color coded Graphing
+        while True:
+             print("Visualize community detection? (y/n)") 
+             see_communities = input().lower()
+             if see_communities == 'y':
+                G_similarity = create_similarity_graph(tickers, gather_matrix)
+                partition = detect_communities(G_similarity)
+                visualize_communities(Graphs, partition)
+                break
+             elif see_communities == 'n':
+                print("skipping...")
+                break
         break
     elif see_matrix == 'n':
         print('skipping.')
         break
-
-
-#Testing NetworkX 
-while  True:
-    print("Would you like to generate a graph? (y/n)")
-    see_graph = input().lower()
-    if see_graph == 'y':
-         gather_matrix = get_correlation_matrix(tickers,start_date, end_date)        
-         dist = correlation_to_distance(gather_matrix)
-
-         Graphs = create_n_graphs(tickers, dist)
-         pos = nx.spring_layout(Graphs)
-         nx.draw(Graphs, pos, with_labels=True)
-         plt.show()
-         break
-    elif see_graph == 'n':
-        print("skipping...")
-        break
-
-
-
-
-    
-    
 
 #Visualizing Golden Cross Strategy 
 while True:
