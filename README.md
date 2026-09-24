@@ -6,7 +6,7 @@ This repository serves as the home for my first quantitative finance project —
 
 This project simulates and evaluates a moving average crossover trading strategy (Golden Cross) on S&P 500 stock data. It is designed to analyze historical performance and compare results against a buy-and-hold benchmark.
 
--- > Designed as a "learn as you go" built progressively as I develop my skills in Python and data analysis 
+Designed as a "learn as you go" built progressively as I develop my skills in Python and data analysis.
 
 Tyre Bolton -- CS @ University of Maryland
 
@@ -14,7 +14,7 @@ Tyre Bolton -- CS @ University of Maryland
 Over the past 2 weeks I have spent time building the core of the backtester. So far it: 
 
 - Pulls historical stock data using yfinance 
--- Took time to learn how to properly use yfinance and explored various stock data (AAPL, TSLA, ect.)
+-- I took time to learn how to properly use yfinance and explored various stock data (AAPL, TSLA, ect.)
 - Calculates 50-day and 200-day Moving Average (MA) to find trends 
 - Generates signals based on MA trends 
 -- if 50-day MA crosses above 200-day MA (golden cross) a buy signal is generated 
@@ -24,7 +24,7 @@ Over the past 2 weeks I have spent time building the core of the backtester. So 
 - Compares strategy against a buy-and-hold benchmark
 - Visualizes price, moving averages, and trade signals with matplotlib 
 
-**Key Finding**:  On AAPL (2010-2023) the strategy returned ~$55k on $10k starting capital, but buy-and-hold returned a ~300k - roughly 5x more than the golden cross strategy. 
+**Key Finding**:  On AAPL (2012-2023) the strategy returned ~$55k on $10k starting capital, but buy-and-hold returned a ~300k - roughly 5x more than the golden cross strategy. 
 
 - From this I learned that the golden cross strategy underperforms because of how often it sells, forcing me to sit on tons of cash for long stretches of time. Compared to the buy-and-hold stategy that basically never sells and captures all stock growth. 
 
@@ -33,7 +33,7 @@ I've refactored the code so that it could run the strategy on multiple stocks in
 
 **Key Finding**: One observation worth pointing out. 
 
-While viewing the stock data for Meta (META 2010-2023) , I noticed that the total profit from the Golden Cross strategy was greater than the Buy and Hold strategy, having a ratio of ~2.7x. The other data I've viewed have all had higher Buy and Hold ratios. Which means the golden cross strategy outperformed. 
+While viewing the stock data for Meta (2012-2023), I noticed that the total profit from the Golden Cross strategy was greater than the Buy and Hold strategy, having a ratio of ~2.7x. The other data I've viewed have all had higher Buy and Hold ratios. Which means the golden cross strategy outperformed. 
 
 Looking at the individual trades I noticed the strategy caught one massive winner between 2013 and 2017 gaining a profit of ~$21,490 at $10k starting capital and only lost ~$8k in the span of 20 years. 
 
