@@ -10,8 +10,11 @@ import networkx as nx
 import community as community_louvain
 
 # Preparing data - Create Moving Average and Buy/Sell Signals
-def prepare_data(ticker, start_date, end_date):
-    stock_data = yf.download(ticker, start= start_date, end=end_date)
+# download_start is the start date for downloading data, 
+# eval_start is the start date for evaluating the strategy, 
+# end_date is the end date for evaluating the strategy.
+def prepare_data(ticker, download_start, eval_start, end_date):
+    stock_data = yf.download(ticker, start= download_start, end=end_date)
     stock_data.columns = stock_data.columns.droplevel(1)
  
     # Calculate 50 day and 200 day Moving Average to find trends 
@@ -29,6 +32,8 @@ def prepare_data(ticker, start_date, end_date):
     stock_data.loc[(stock_data['MA50'] > stock_data['MA200']) & (stock_data['MA50'].shift(1) < stock_data['MA200'].shift(1)) ,'Signal'] = 1 #Buy
     stock_data.loc[(stock_data['MA50'] < stock_data['MA200']) & (stock_data['MA50'].shift(1) > stock_data['MA200'].shift(1)) ,'Signal'] = -1 #Sell
 
+    stock_data['Signal'] = stock_data['Signal'].shift(1).fillna(0)
+    stock_data = stock_data.loc[eval_start:]
     return stock_data 
 
 # Simulating Trades - These trades are based on the signals generated  by the moving averages. 
@@ -83,7 +88,7 @@ def simulate_trades(stock_data,cash):
 
     return trade
 
-#Performance Metrics - Generating performance metrics based on the trades simulated. 
+# Performance Metrics - Generating performance metrics based on the trades simulated. 
 # These metrics will help evaluate the effectiveness of the trading strategy.
 def calculate_metric(trades):
     total_profit = 0 
@@ -94,21 +99,21 @@ def calculate_metric(trades):
     max_drawdown = 0.0
     performance_metric = []
 
-    #Total profit - Sum of all profits from trades
+    # Total profit - Sum of all profits from trades
     total_profit = sum(trade['profit'] for trade  in trades )
 
-    #Win Rate - (num of profits > 0 / num of trades) * 100
+    # Win Rate - (num of profits > 0 / num of trades) * 100
     win_rate =  (sum(trade['profit'] > 0 for trade  in trades ) / len(trades))   *100 if trades else 0 #case if trades are 0
 
     winning_profits = [trade['profit'] for trade in trades if trade['profit'] > 0]
     losing_profits = [trade['profit'] for trade in trades if trade['profit'] < 0]
 
-    #Average Win - average of all the wins 
+    # Average Win - average of all the wins 
     avg_win = sum(winning_profits) / len(winning_profits) if winning_profits else 0 #case if wins are 0
-    #Average Loss - average of all losses
+    # Average Loss - average of all losses
     avg_loss = sum(losing_profits) / len(losing_profits) if losing_profits else 0
 
-    #Drawdown - term for any drop 
+    # Drawdown - term for any drop 
     peak = trades[0]['balance'] if trades else 0
 
     for  trade in trades:
@@ -130,8 +135,8 @@ def calculate_metric(trades):
     })
     return  performance_metric
 
-#Benchmark Comparison - Comparing my trading strategy 
-#final balance to my buy/hold final value.  
+# Benchmark Comparison - Comparing my trading strategy 
+# final balance to my buy/hold final value.  
 def calculate_buy_and_hold(stock_data, cash):
     first_price = stock_data['Close'].iloc[0]
     last_price =  stock_data['Close'].iloc[-1]
@@ -204,9 +209,9 @@ def visualize_communities(G, partition, title = "Stock Correlation Communities")
     node_colors = [colors(partition[node]) for node in G.nodes()]
     
     plt.figure(figsize=(10, 8))
-    nx.draw(G, pos, with_labels=True, node_color=node_colors, 
+    nx.draw(G, pos, withth_labels=True, node_color=node_colors, 
             node_size=800, font_size=9, font_weight='bold')
-    plt.title(title)
+    plt.title(title) 
     plt.show()
 # Setup for multiple tickers. We will loop through each ticker and perform the backtesting process. 
 # All across one time frame.
@@ -216,14 +221,15 @@ tickers = [
     'JPM', 'BAC', 'GS',                # banks
     'PEP', 'KO', 'WMT'                 # consumer staples
 ] #stock tickers
-start_date = '2000-01-01'
-end_date = '2020-12-31'
+download_start = '2014-01-01'
+eval_start = '2015-01-01'
+end_date = '2025-12-31'
 starting_cash = int(input("Starting Cash: $")) #starting cash
 
 # Loop through each ticker and perform backtesting
 for ticker in tickers:
-    print(f"\nBacktesting {ticker} from {start_date} to {end_date}...")
-    stock_data = prepare_data(ticker, start_date, end_date)
+    print(f"\nBacktesting {ticker} from {eval_start} to {end_date} (MA warm-up from {download_start})...")
+    stock_data = prepare_data(ticker, download_start, eval_start, end_date)
     trades = simulate_trades(stock_data,starting_cash)
     performance_metrics = calculate_metric(trades)
     buy_hold_value = calculate_buy_and_hold(stock_data, starting_cash)
@@ -252,7 +258,7 @@ while True:
     print("Would you like to view the correlation matrix for these tickers? (y/n)")
     see_matrix = input().lower()
     if see_matrix == 'y':
-        gather_matrix = get_correlation_matrix(tickers,start_date, end_date)      
+        gather_matrix = get_correlation_matrix(tickers,eval_start, end_date)      
         print(gather_matrix.round(2))
         dist = correlation_to_distance(gather_matrix)
         Graphs = create_n_graphs(tickers, dist)
@@ -305,8 +311,8 @@ while True:
         if ticker not in tickers:
             print(f"{ticker} is not in the list of tickers. Please choose from {tickers}.")
         else:
-            stock_data = prepare_data(ticker, start_date, end_date)
-            print(f"Visualizing {ticker} Golden Cross Strategy from {start_date} to {end_date}...")
+            stock_data = prepare_data(ticker, download_start, eval_start, end_date)
+            print(f"Visualizing {ticker} Golden Cross Strategy from {eval_start} to {end_date} (MA warm-up from {download_start})...")
             plt.style.use('seaborn-v0_8-darkgrid')
 
             plt.figure(figsize=(14, 7))  
@@ -320,7 +326,7 @@ while True:
 
             sells = stock_data[stock_data['Signal'] == -1]
             plt.scatter(sells.index, sells['Close'], color='red', marker='v', s=100, label='Sell')
-            plt.title(f"{ticker} Golden Cross Strategy ({start_date[:4]}-{end_date[:4]})")
+            plt.title(f"{ticker} Golden Cross Strategy ({eval_start[:4]}-{end_date[:4]})")
             plt.xlabel('Date')
             plt.ylabel('Price ($)')
             plt.grid(True, alpha=0.3)
