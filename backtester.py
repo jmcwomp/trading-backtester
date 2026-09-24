@@ -68,7 +68,7 @@ def simulate_trades(stock_data,cash):
                 'balance': round(float(cash),2)
                 })
             shares = 0
-            equity.append(shares * row['Close'] if shares else cash)
+        equity.append(shares * row['Close'] if shares else cash)
 
     # If a position is still open at the end of the backtest window,
     # close it out at the last available price so it's not silently dropped.
@@ -92,7 +92,7 @@ def simulate_trades(stock_data,cash):
 
 # Performance Metrics - Generating performance metrics based on the trades simulated. 
 # These metrics will help evaluate the effectiveness of the trading strategy.
-def calculate_metric(trades):
+def calculate_metric(trades, equity):
     total_profit = 0 
     win_rate = 0.0
     avg_win = 0
@@ -120,11 +120,11 @@ def calculate_metric(trades):
     for value in equity:
         if value > peak:
             peak = value
-        drawdown = (peak - value) / peak
+        drawdown = ((peak - value) / peak) * 100 
         if drawdown > max_drawdown:
             max_drawdown = drawdown
 
-            
+
     performance_metric.append({
         'Trades': len(trades),
         'Total Profit': total_profit, 
@@ -149,7 +149,7 @@ def benchmark_comparison(strategy_profit, buy_hold_profit):
     ratio = 0.0
     final_comparison = []
     if buy_hold_profit > 0:
-        ratio = strategy_profit / buy_hold_profit
+        ratio = round(strategy_profit / buy_hold_profit, 2)
     else:
         ratio = 'n/a'
     final_comparison.append({
@@ -164,7 +164,7 @@ def benchmark_comparison(strategy_profit, buy_hold_profit):
 def get_correlation_matrix(tickers, start_date, end_date):
     data = yf.download(tickers, start= start_date, end=end_date)
     closing_price = data["Close"]
-    returns = closing_price.pct_change()
+    returns = closing_price.pct_change().dropna()
     correlation_matrix = returns.corr()
     return correlation_matrix
 
@@ -204,7 +204,7 @@ def visualize_communities(G, partition, title = "Stock Correlation Communities")
     node_colors = [colors(partition[node]) for node in G.nodes()]
     
     plt.figure(figsize=(10, 8))
-    nx.draw(G, pos, withth_labels=True, node_color=node_colors, 
+    nx.draw(G, pos, with_labels=True, node_color=node_colors, 
             node_size=800, font_size=9, font_weight='bold')
     plt.title(title) 
     plt.show()
@@ -223,10 +223,10 @@ starting_cash = int(input("Starting Cash: $")) #starting cash
 
 # Loop through each ticker and perform backtesting
 for ticker in tickers:
-    print(f"\nBacktesting {ticker} from {eval_start} to {end_date} (MA warm-up from {download_start})...")
     stock_data = prepare_data(ticker, download_start, eval_start, end_date)
+    print(f"\nBacktesting {ticker} from {stock_data.index[0].date()} to {stock_data.index[-1].date()} (MA warm-up from {download_start[:4]})...")
     trades, equity = simulate_trades(stock_data,starting_cash)
-    performance_metrics = calculate_metric(trades)
+    performance_metrics = calculate_metric(trades, equity)
     buy_hold_profit = calculate_buy_and_hold(stock_data, starting_cash)
     strategy_profit = performance_metrics[0]['Total Profit']
     comparison = benchmark_comparison(strategy_profit, buy_hold_profit)
@@ -307,7 +307,7 @@ while True:
             print(f"{ticker} is not in the list of tickers. Please choose from {tickers}.")
         else:
             stock_data = prepare_data(ticker, download_start, eval_start, end_date)
-            print(f"Visualizing {ticker} Golden Cross Strategy from {eval_start} to {end_date} (MA warm-up from {download_start})...")
+            print(f"Visualizing {ticker} Golden Cross Strategy from {stock_data.index[0].year}-{stock_data.index[-1].year} (MA warm-up from {download_start})...")
             plt.style.use('seaborn-v0_8-darkgrid')
 
             plt.figure(figsize=(14, 7))  
@@ -321,7 +321,7 @@ while True:
 
             sells = stock_data[stock_data['Signal'] == -1]
             plt.scatter(sells.index, sells['Close'], color='red', marker='v', s=100, label='Sell')
-            plt.title(f"{ticker} Golden Cross Strategy ({eval_start[:4]}-{end_date[:4]})")
+            plt.title(f"{ticker} Golden Cross Strategy ({stock_data.index[0].year}-{stock_data.index[-1].year})")
             plt.xlabel('Date')
             plt.ylabel('Price ($)')
             plt.grid(True, alpha=0.3)
