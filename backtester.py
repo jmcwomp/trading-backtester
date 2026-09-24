@@ -44,6 +44,7 @@ def simulate_trades(stock_data,cash):
     buy_date = None
     trade = []
     profit = 0
+    equity = []
     for i, row, in stock_data.iterrows():
 
         #Buy signal
@@ -67,6 +68,7 @@ def simulate_trades(stock_data,cash):
                 'balance': round(float(cash),2)
                 })
             shares = 0
+            equity.append(shares * row['Close'] if shares else cash)
 
     # If a position is still open at the end of the backtest window,
     # close it out at the last available price so it's not silently dropped.
@@ -86,7 +88,7 @@ def simulate_trades(stock_data,cash):
             'balance': round(float(cash), 2)
         })
 
-    return trade
+    return trade , equity
 
 # Performance Metrics - Generating performance metrics based on the trades simulated. 
 # These metrics will help evaluate the effectiveness of the trading strategy.
@@ -98,6 +100,7 @@ def calculate_metric(trades):
     drawdown = 0.0
     max_drawdown = 0.0
     performance_metric = []
+    peak = equity[0] if equity else 0
 
     # Total profit - Sum of all profits from trades
     total_profit = sum(trade['profit'] for trade  in trades )
@@ -114,16 +117,14 @@ def calculate_metric(trades):
     avg_loss = sum(losing_profits) / len(losing_profits) if losing_profits else 0
 
     # Drawdown - term for any drop 
-    peak = trades[0]['balance'] if trades else 0
-
-    for  trade in trades:
-        balance = trade['balance']
-        if  balance > peak:
-            peak = balance 
-        drawdown = ((peak - balance) / peak ) * 100
-
+    for value in equity:
+        if value > peak:
+            peak = value
+        drawdown = (peak - value) / peak
         if drawdown > max_drawdown:
             max_drawdown = drawdown
+
+            
     performance_metric.append({
         'Trades': len(trades),
         'Total Profit': total_profit, 
@@ -131,38 +132,32 @@ def calculate_metric(trades):
         'Average Win': avg_win,
         'Average Loss': avg_loss,
         'Max Drawdown': max_drawdown,
-        
     })
     return  performance_metric
 
 # Benchmark Comparison - Comparing my trading strategy 
-# final balance to my buy/hold final value.  
+# final balance to my total profit from a buy and hold strategy.
 def calculate_buy_and_hold(stock_data, cash):
     first_price = stock_data['Close'].iloc[0]
     last_price =  stock_data['Close'].iloc[-1]
     shares = cash / first_price
     final_value = shares * last_price
-    return float(final_value)
+    return float(final_value - cash)
 
-def benchmark_comparison(strategy_profit, buy_hold_value):
-    difference = 0
+def benchmark_comparison(strategy_profit, buy_hold_profit):
+    difference = strategy_profit - buy_hold_profit
     ratio = 0.0
     final_comparison = []
-    if strategy_profit > buy_hold_value:
-        difference = strategy_profit - buy_hold_value
-        ratio = strategy_profit /  buy_hold_value
-    elif buy_hold_value > strategy_profit:
-        difference = buy_hold_value - strategy_profit
-        ratio = buy_hold_value /  strategy_profit
+    if buy_hold_profit > 0:
+        ratio = strategy_profit / buy_hold_profit
     else:
-        difference = 0
-        ratio = 1 
+        ratio = 'n/a'
     final_comparison.append({
-        'Strategy Profit': strategy_profit,
-        'Buy & Hold Profit': buy_hold_value,
-        'Difference': difference,
-        'Ratio': ratio
-            })
+        'Strategy Profit': round(strategy_profit, 2),
+        'Buy & Hold Profit': round(buy_hold_profit, 2),
+        'Difference': round(difference, 2),
+        'Strategy to Buy & Hold Ratio': ratio
+    })
     return final_comparison
 
 #Correlation Matrix - Measures how each pair of stocks move together based on daily return values
@@ -223,18 +218,18 @@ tickers = [
 ] #stock tickers
 download_start = '2014-01-01'
 eval_start = '2015-01-01'
-end_date = '2025-12-31'
+end_date = '2026-01-01'
 starting_cash = int(input("Starting Cash: $")) #starting cash
 
 # Loop through each ticker and perform backtesting
 for ticker in tickers:
     print(f"\nBacktesting {ticker} from {eval_start} to {end_date} (MA warm-up from {download_start})...")
     stock_data = prepare_data(ticker, download_start, eval_start, end_date)
-    trades = simulate_trades(stock_data,starting_cash)
+    trades, equity = simulate_trades(stock_data,starting_cash)
     performance_metrics = calculate_metric(trades)
-    buy_hold_value = calculate_buy_and_hold(stock_data, starting_cash)
+    buy_hold_profit = calculate_buy_and_hold(stock_data, starting_cash)
     strategy_profit = performance_metrics[0]['Total Profit']
-    comparison = benchmark_comparison(strategy_profit, buy_hold_value)
+    comparison = benchmark_comparison(strategy_profit, buy_hold_profit)
     print(f"Performance Metrics for {ticker}")
     print(performance_metrics)
     print(f"Benchmark Comparison for {ticker}")
