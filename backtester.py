@@ -64,6 +64,7 @@ def simulate_trades(stock_data,cash):
                  'buy_date': buy_date,
                 'buy_price': float(buy_price),
                 'sell_date': sell_date,
+                'sell_price': round(float(sell_price), 2),
                 'profit': round(float(profit), 2), 
                 'balance': round(float(cash),2)
                 })
@@ -89,6 +90,17 @@ def simulate_trades(stock_data,cash):
         })
 
     return trade , equity
+
+def calculate_max_drawdown(equity):
+    peak = equity[0] if len(equity) else 0
+    max_drawdown = 0.0
+    for value in equity:
+        if value > peak:
+            peak = value
+        drawdown = ((peak - value) / peak) * 100
+        if drawdown > max_drawdown:
+            max_drawdown = drawdown
+    return round(float(max_drawdown), 2)
 
 # Performance Metrics - Generating performance metrics based on the trades simulated. 
 # These metrics will help evaluate the effectiveness of the trading strategy.
@@ -117,21 +129,15 @@ def calculate_metric(trades, equity):
     avg_loss = sum(losing_profits) / len(losing_profits) if losing_profits else 0
 
     # Drawdown - term for any drop 
-    for value in equity:
-        if value > peak:
-            peak = value
-        drawdown = ((peak - value) / peak) * 100 
-        if drawdown > max_drawdown:
-            max_drawdown = drawdown
-
+    max_drawdown = calculate_max_drawdown(equity)
 
     performance_metric.append({
         'Trades': len(trades),
-        'Total Profit': total_profit, 
-        'Win Rate': win_rate,
-        'Average Win': avg_win,
-        'Average Loss': avg_loss,
-        'Max Drawdown': max_drawdown,
+        'Total Profit':round(float(total_profit), 2),
+        'Win Rate': round(float(win_rate), 2),
+        'Average Win': round(float(avg_win), 2),
+        'Average Loss': round(float(avg_loss), 2),
+        'Max Drawdown': round(float(max_drawdown), 2),
     })
     return  performance_metric
 
@@ -144,7 +150,11 @@ def calculate_buy_and_hold(stock_data, cash):
     final_value = shares * last_price
     return float(final_value - cash)
 
-def benchmark_comparison(strategy_profit, buy_hold_profit):
+def calculate_buy_and_hold_equity(stock_data, cash):
+    shares = cash / stock_data['Close'].iloc[0]
+    return list(shares * stock_data['Close'])
+
+def benchmark_comparison(strategy_profit, buy_hold_profit, bh_drawdown, strategy_drawdown):
     difference = strategy_profit - buy_hold_profit
     ratio = 0.0
     final_comparison = []
@@ -156,9 +166,16 @@ def benchmark_comparison(strategy_profit, buy_hold_profit):
         'Strategy Profit': round(strategy_profit, 2),
         'Buy & Hold Profit': round(buy_hold_profit, 2),
         'Difference': round(difference, 2),
-        'Strategy to Buy & Hold Ratio': ratio
+        'Strategy to Buy & Hold Ratio': ratio,
+        'Buy & Hold Drawdown': round(bh_drawdown, 2),
+        'Strategy Drawdown': round(strategy_drawdown, 2)
     })
     return final_comparison
+
+# Lowest closing price between two dates, used to check whether a sell landed near the bottom
+def lowest_close(stock_data, start, end):
+    window = stock_data['Close'].loc[start:end]
+    return window.idxmin().date(), round(float(window.min()), 2)
 
 #Correlation Matrix - Measures how each pair of stocks move together based on daily return values
 def get_correlation_matrix(tickers, start_date, end_date):
@@ -221,6 +238,8 @@ eval_start = '2015-01-01'
 end_date = '2026-01-01'
 starting_cash = int(input("Starting Cash: $")) #starting cash
 
+results = []
+
 # Loop through each ticker and perform backtesting
 for ticker in tickers:
     stock_data = prepare_data(ticker, download_start, eval_start, end_date)
@@ -228,8 +247,13 @@ for ticker in tickers:
     trades, equity = simulate_trades(stock_data,starting_cash)
     performance_metrics = calculate_metric(trades, equity)
     buy_hold_profit = calculate_buy_and_hold(stock_data, starting_cash)
+    buy_hold_equity = calculate_buy_and_hold_equity(stock_data, starting_cash)
+    bh_drawdown = calculate_max_drawdown(buy_hold_equity)
     strategy_profit = performance_metrics[0]['Total Profit']
-    comparison = benchmark_comparison(strategy_profit, buy_hold_profit)
+    strategy_drawdown = performance_metrics[0]['Max Drawdown']
+    comparison = benchmark_comparison(strategy_profit, buy_hold_profit,
+                                      bh_drawdown, strategy_drawdown)
+    results.append({'Ticker': ticker, **comparison[0], 'Trades': performance_metrics[0]['Trades']})
     print(f"Performance Metrics for {ticker}")
     print(performance_metrics)
     print(f"Benchmark Comparison for {ticker}")
@@ -238,15 +262,22 @@ for ticker in tickers:
     view_trades = input().lower()
     if view_trades == 'y':
         print(f"Trades for {ticker}:")
-        for trade in trades:
+        for n, trade in enumerate(trades):
             print(trade)
+             # From this sell until the next buy (or the end of the data)
+            next_buy = trades[n + 1]['buy_date'] if n + 1 < len(trades) else stock_data.index[-1]
+            low_date, low_price = lowest_close(stock_data, trade['sell_date'], next_buy)
+            print(f"  Lowest close while out of the market: ${low_price} on {low_date}")
     else: print("Trades skipped.")
     print("next? (y/n)")
     next_ticker = input().lower()
     if next_ticker == 'y':
         continue
+    
     else: break
-
+print(pd.DataFrame(results).to_string(index=False))
+    
+    
 #Testing Correlation Matrix 
    
 while True:
