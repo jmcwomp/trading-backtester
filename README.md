@@ -113,7 +113,7 @@ I went back through the code and found bugs that inflated or distored my earlier
 
 - **It only protects you from crashes that last longer than its lag.** META's 2022 decline lasted most of the year. The strategy sold at $331 and sat out the fall to $88, while buy-and-hold rode it down 77%. AAPL's 2018 selloff lasted about 3 months, which was over before the signal fired.
 
-- **Choppy stocks get whipsawed.** KO and BAC had the worst results (0.08 and 0.16) and some of the most trades (10–11). With no clear trend, the averages kept crossing back and forth, and small losses on each round trip added up.
+- **Choppy stocks get whipsawed.** KO had the worst results (0.08x) across 10 trades. Each loss was small, but the strategy bought back in higher tan it sold on all 8 entries. In April 2019 it sold at $37.82 and bought back 15 days later at $38.30. Three of its sells landed on the lowest close of the period it was out. The strategy never took a big loss. It just kept paying more to get back in. 
 
 - **Drawdown protection was inconsistent.** Meaningfully smaller on 5 stocks (META, GOOGL, MSFT, XOM, CVX), about the same on 5, and worse on 2 (AAPL, WMT).
 
