@@ -38,10 +38,11 @@ I've refactored the code so that it could run the strategy on multiple stocks in
 
 ~~Looking at the individual trades I noticed the strategy caught one massive winner between 2013 and 2017 gaining a profit of ~$21,490 at $10k starting capital and only lost ~$8k in the span of 20 years.~~ 
 
-**Superseded (see UPDATE-4):** the 2.7x came from bugd in my benchmark comparison. The ratio didn't show which side won, and buy-and-hold included starting cash while the strategy didn't. Corrected 2015-2025 results: the strategy made **0.47x** of buy-and-hold's profit. 
+**Superseded (see UPDATE-4):** the 2.7x came from bugs in my benchmark comparison. The ratio didn't show which side won, and buy-and-hold included starting cash while the strategy didn't. Corrected 2015-2025 results: the strategy made **0.47x** of buy-and-hold's profit. 
 
 
 ~~But why did Meta (META) win when Apple (AAPL) Lost by 5x? The answer is volatility. Meta had sharp, avoidable crashes that the death cross helped the strategy evade. Allowing the stocks to be sold before drops and buying back in for recoveries. Apple, by contrast, was a smooth riser. Steady climb with few crashes to avoid, so the same stradegy just missed gains while sitting in cash.~~ 
+
 **Superseded (see UPDATE-4):** Though this gathered information came from a error, the volatility intuition still holds up partly. META had the deepest crash of all 12 stocks (-77% in  2022). The death cross sold at $331 and sat out the entire fall to $88. 
 
 The real difference was not how *sharp* the crashes were, it was how *long* the crashes were. META's 2022 decline lasted most of the year, long enough for the slow 50/200 to get out early. AAPL's 2018 selloff only lasted 3 months, so by the time the death cross fired, the crash was nearly over.
